@@ -162,51 +162,23 @@ export const extractFrames = async (file: File): Promise<{ frames: string[], met
   });
 };
 
-// Call Qwen API for a single frame
+// Call Qwen API for a single frame via backend proxy
 const analyzeFrameWithQwen = async (base64Image: string, index: number): Promise<FrameAnalysis> => {
-  // Strip prefix if present
-  const cleanBase64 = base64Image.replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
-
-  const messages = [
-    {
-      role: "user",
-      content: [
-        { image: `data:image/jpeg;base64,${cleanBase64}` },
-        { text: `请严格按以下JSON格式分析这张图片：
-{
-    "has_clear_face": false,
-    "face_confidence": 0.0,
-    "face_description": "",
-    "has_subtitle": false,
-    "subtitle_confidence": 0.0,
-    "subtitle_text": ""
-}
-检测标准：
-1. 人脸检测：检测画面中是否包含清晰的正面脸或侧脸
-   - ✅ 清晰的正面或侧脸
-   - ❌ 远景模糊脸、人群中模糊脸、背影
-   - 置信度：0.0-1.0
-2. 字幕检测：检测画面中任何位置的文字
-   - ✅ 中文、英文、标题、水印
-   - ❌ 建筑招牌、商店名称、海报文字、墙上的字、产品包装以及无文字画面
-请只返回JSON，不要任何其他文字。` }
-      ]
-    }
-  ];
+  // Ensure we have the full data URI
+  let imagePayload = base64Image;
+  if (!base64Image.startsWith('data:image')) {
+      imagePayload = `data:image/jpeg;base64,${base64Image}`;
+  }
 
   try {
-    // Note: Calling Dashscope directly from browser might have CORS issues.
-    // If this fails, we might need a proxy. For now, we try direct call as per user request context.
-    const response = await fetch("https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation", {
+    const response = await fetch("/api/analyze-frame", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${QWEN_API_KEY}`,
         "Content-Type": "application/json",
-        "X-DashScope-WorkSpace": "modal" // Optional, sometimes needed
       },
       body: JSON.stringify({
-        model: "qwen-vl-max",
-        input: { messages }
+        image: imagePayload,
+        index
       })
     });
 
@@ -261,10 +233,8 @@ const analyzeFrameWithQwen = async (base64Image: string, index: number): Promise
 };
 
 export const analyzeVideoWithQwen = async (file: File, onProgress?: (msg: string) => void): Promise<VideoAnalysisResult> => {
-  if (!QWEN_API_KEY) {
-    throw new Error("请配置 VITE_QWEN_API_KEY 环境变量以使用 AI 功能");
-  }
-
+  // Note: API Key check is now done on the backend
+  
   if (onProgress) onProgress("正在提取视频帧...");
   const { frames, meta } = await extractFrames(file);
 
