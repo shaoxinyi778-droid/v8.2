@@ -1,7 +1,6 @@
 import { Video } from '../types';
 
 // Configuration
-const QWEN_API_KEY = import.meta.env.VITE_QWEN_API_KEY || "";
 const SAMPLE_FRAMES = 6;
 const MAX_IMAGE_SIZE = 1024;
 const FACE_CONFIDENCE_MIN = 0.7;
@@ -185,7 +184,7 @@ const analyzeFrameWithQwen = async (base64Image: string, index: number): Promise
     if (!response.ok) {
         const errText = await response.text();
         console.error("Qwen API Error:", errText);
-        throw new Error(`API Error: ${response.status}`);
+        throw new Error(`API Error: ${response.status} ${errText}`);
     }
 
     const data = await response.json();
@@ -243,6 +242,11 @@ export const analyzeVideoWithQwen = async (file: File, onProgress?: (msg: string
   // Analyze frames in parallel (limit concurrency if needed, but 6 is low enough)
   const analysisPromises = frames.map((frame, idx) => analyzeFrameWithQwen(frame, idx));
   const analyses = await Promise.all(analysisPromises);
+
+  const failedFrames = analyses.filter(a => a.face_description === 'Error').length;
+  if (failedFrames === analyses.length) {
+    throw new Error('AI服务调用失败：所有帧都解析失败。请检查 Vercel 环境变量 QWEN_API_KEY、部署地域网络连通性，以及 /api/analyze-frame 是否可访问。');
+  }
 
   // Aggregate results
   let faceCount = 0;
