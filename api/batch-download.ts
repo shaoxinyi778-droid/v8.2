@@ -49,7 +49,6 @@ const toStorageObjectUrl = (supabaseUrl: string, bucket: string, storagePath: st
 
 const nowDate = () => new Date().toISOString().slice(0, 10);
 
-
 const readEnv = (...keys: string[]) => {
   for (const key of keys) {
     const value = process.env[key];
@@ -77,12 +76,6 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({
       error: 'Server storage config missing: SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY for public bucket)'
     });
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'assets';
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return res.status(500).json({ error: 'Server storage config missing' });
   }
 
   const items = Array.isArray(req.body?.items) ? (req.body.items as BatchItem[]) : [];
@@ -131,8 +124,6 @@ export default async function handler(req: any, res: any) {
           headers: {
             Authorization: `Bearer ${storageAccessKey}`,
             apikey: storageAccessKey
-            Authorization: `Bearer ${serviceRoleKey}`,
-            apikey: serviceRoleKey
           }
         });
 
@@ -164,7 +155,6 @@ export default async function handler(req: any, res: any) {
       successFiles.push(reportName);
     }
 
-    // NOTE: 依赖系统 zip 命令。Vercel Node Serverless 通常可用，但若运行环境变更需要改为纯 Node ZIP 库。
     const zipName = `素材批量下载_${nowDate()}.zip`;
     const encodedZipName = encodeURIComponent(zipName);
 
