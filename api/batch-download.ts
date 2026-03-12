@@ -4,7 +4,7 @@ import { createWriteStream } from 'fs';
 import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { spawn } from 'child_process';
+import archiver from 'archiver';
 
 export const config = {
   runtime: 'nodejs'
@@ -113,6 +113,17 @@ export default async function handler(req: any, res: any) {
   const failed: { id: string; fileName: string; reason: string }[] = [];
   const successFiles: string[] = [];
 
+  let cleanedUp = false;
+  const cleanupTempDir = async () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    await rm(tempDir, { recursive: true, force: true });
+  };
+
+  res.on('close', () => {
+    void cleanupTempDir();
+  });
+
   try {
     for (const item of validItems) {
       const localFileName = withUniqueName(item.fileName, usedNames);
@@ -162,11 +173,10 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedZipName}`);
     res.setHeader('Cache-Control', 'no-store');
 
-    const zipArgs = ['-q', '-', ...successFiles];
-    const zipProcess = spawn('zip', zipArgs, { cwd: tempDir });
+    const archive = archiver('zip', { zlib: { level: 9 } });
 
-    zipProcess.on('error', (error) => {
-      console.error('[batch-download] zip process error:', error);
+    archive.on('error', (error) => {
+      console.error('[batch-download] archive error:', error);
       if (!res.headersSent) {
         res.status(500).json({ error: '压缩失败' });
       } else {
@@ -174,20 +184,15 @@ export default async function handler(req: any, res: any) {
       }
     });
 
-    zipProcess.stderr.on('data', (chunk) => {
-      console.warn('[batch-download] zip stderr:', String(chunk));
-    });
+    archive.pipe(res);
 
-    zipProcess.stdout.pipe(res);
+    for (const fileName of successFiles) {
+      archive.file(join(tempDir, fileName), { name: fileName });
+    }
 
-    zipProcess.on('close', async (code) => {
-      if (code && !res.headersSent) {
-        res.status(500).json({ error: '压缩失败' });
-      }
-      await rm(tempDir, { recursive: true, force: true });
-    });
+    await archive.finalize();
   } catch (error: any) {
-    await rm(tempDir, { recursive: true, force: true });
+    await cleanupTempDir();
     return res.status(500).json({ error: error?.message || '批量下载失败' });
   }
 }
