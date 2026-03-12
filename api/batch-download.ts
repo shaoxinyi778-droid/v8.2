@@ -49,12 +49,34 @@ const toStorageObjectUrl = (supabaseUrl: string, bucket: string, storagePath: st
 
 const nowDate = () => new Date().toISOString().slice(0, 10);
 
+
+const readEnv = (...keys: string[]) => {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value && value.trim()) return value.trim();
+  }
+  return '';
+};
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  const supabaseUrl = readEnv('SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'VITE_SUPABASE_URL');
+  const serviceRoleKey = readEnv('SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE', 'SUPABASE_SECRET_KEY');
+  const storageAccessKey = serviceRoleKey || readEnv('SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY');
+  const bucket = readEnv('SUPABASE_STORAGE_BUCKET', 'VITE_SUPABASE_STORAGE_BUCKET') || 'assets';
+
+  if (!supabaseUrl) {
+    return res.status(500).json({ error: 'Server storage config missing: SUPABASE_URL' });
+  }
+
+  if (!storageAccessKey) {
+    return res.status(500).json({
+      error: 'Server storage config missing: SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY for public bucket)'
+    });
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'assets';
@@ -107,6 +129,8 @@ export default async function handler(req: any, res: any) {
         const objectUrl = toStorageObjectUrl(supabaseUrl, bucket, item.storagePath);
         const response = await fetch(objectUrl, {
           headers: {
+            Authorization: `Bearer ${storageAccessKey}`,
+            apikey: storageAccessKey
             Authorization: `Bearer ${serviceRoleKey}`,
             apikey: serviceRoleKey
           }
