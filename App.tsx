@@ -15,7 +15,8 @@ import {
   createRemoteProject, 
   deleteRemoteProject,
   updateRemoteVideoStatus,
-  deleteRemoteVideoPermanently
+  deleteRemoteVideoPermanently,
+  downloadBatchAsZip
 } from './services/cloudService';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [topFilter, setTopFilter] = useState<TopFilterState>({ orientation: 'all', content: 'all', subtitle: 'all' });
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'success', visible: false });
+  const [isBatchDownloading, setIsBatchDownloading] = useState(false);
 
   // Auth & Init
   useEffect(() => {
@@ -190,24 +192,44 @@ function App() {
   const selectAll = () => setSelectedIds(new Set(filteredVideos.map(v => v.id)));
   const deselectAll = () => setSelectedIds(new Set());
 
-  const handleBatchDownload = () => {
+  const handleBatchDownload = async () => {
     if (selectedIds.size === 0) return showToast('请先选择视频', 'error');
+    if (isBatchDownloading) return;
+
     const selectedVideos = videos.filter(v => selectedIds.has(v.id));
-    selectedVideos.forEach((video, idx) => {
-      if (video.url) {
-        setTimeout(() => {
-          const a = document.createElement('a');
-          a.href = video.url!;
-          a.download = video.title;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }, idx * 500);
-      }
-    });
-    showToast(`已触发下载任务`, 'success');
-    setIsSelectionMode(false);
-    setSelectedIds(new Set());
+    const items = selectedVideos
+      .filter(v => !!v.storagePath)
+      .map(v => ({
+        id: String(v.id),
+        fileName: v.title,
+        storagePath: v.storagePath!
+      }));
+
+    if (items.length === 0) {
+      showToast('选中素材缺少存储路径，无法批量下载', 'error');
+      return;
+    }
+
+    setIsBatchDownloading(true);
+    try {
+      const { blob, fileName } = await downloadBatchAsZip(items);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      showToast('批量下载已开始', 'success');
+      setIsSelectionMode(false);
+      setSelectedIds(new Set());
+    } catch (error: any) {
+      showToast(error?.message || '批量下载失败', 'error');
+    } finally {
+      setIsBatchDownloading(false);
+    }
   };
 
   const handleBatchDelete = async () => {
@@ -399,7 +421,7 @@ function App() {
               </button>
             </div>
           ) : (
-            <div className="columns-2 lg:columns-3 xl:columns-4 gap-6 pb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-6 pb-10">
               {filteredVideos.map(video => (
                 <VideoCard 
                   key={video.id} 
@@ -420,6 +442,8 @@ function App() {
           onSelectAll={selectAll}
           onDeselectAll={deselectAll}
           onDownload={handleBatchDownload}
+          isDownloadDisabled={selectedIds.size === 0 || isBatchDownloading}
+          isDownloading={isBatchDownloading}
           onDelete={handleBatchDelete}
           onClose={toggleSelectionMode}
         />
