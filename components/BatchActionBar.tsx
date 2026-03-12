@@ -6,6 +6,8 @@ interface BatchActionBarProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onDownload: () => void;
+  isDownloadDisabled?: boolean;
+  isDownloading?: boolean;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -17,7 +19,9 @@ export const BatchActionBar: React.FC<BatchActionBarProps> = ({
   onDeselectAll,
   onDownload,
   onDelete,
-  onClose
+  onClose,
+  isDownloadDisabled = false,
+  isDownloading = false
 }) => {
   return (
     <div 
@@ -30,8 +34,12 @@ export const BatchActionBar: React.FC<BatchActionBarProps> = ({
         <button onClick={onDeselectAll} className="text-gray-600 hover:text-gray-800 text-sm font-medium">取消全选</button>
       </div>
       <div className="flex items-center gap-3 px-4">
-        <button onClick={onDownload} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
-          <i className="fa-solid fa-download"></i> 批量下载
+        <button
+          onClick={onDownload}
+          disabled={isDownloadDisabled}
+          className={`text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${isDownloadDisabled ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+        >
+          <i className={`fa-solid ${isDownloading ? 'fa-spinner fa-spin' : 'fa-download'}`}></i> {isDownloading ? '打包中...' : '批量下载'}
         </button>
         <button onClick={onDelete} className="bg-white border border-red-200 text-red-500 hover:bg-red-50 px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
           <i className="fa-regular fa-trash-can"></i> 批量删除
