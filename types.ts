@@ -8,6 +8,7 @@ export interface Video {
   hasSubtitles?: boolean; // New field for subtitle detection
   color: string;
   heightClass: string; // Tailwind height class for masonry simulation
+  storagePath?: string; // Supabase Storage object path
   uploadDate: string;
   isDeleted?: boolean;
   isFavorite?: boolean;
