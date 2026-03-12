@@ -78,7 +78,8 @@ export const fetchRemoteVideos = async (): Promise<Video[]> => {
     isFavorite: v.is_favorite,
     url: getPublicUrl(v.storage_path),
     thumbnail: v.thumbnail_path ? getPublicUrl(v.thumbnail_path) : undefined,
-    projectId: v.project_id
+    projectId: v.project_id,
+    storagePath: v.storage_path
   }));
 };
 
@@ -155,7 +156,8 @@ export const uploadVideoToCloud = async (
     thumbnail: thumbPath ? getPublicUrl(thumbPath) : undefined,
     projectId: data.project_id,
     isDeleted: false,
-    isFavorite: false
+    isFavorite: false,
+    storagePath: filePath
   };
 };
 
@@ -186,4 +188,41 @@ export const deleteRemoteVideoPermanently = async (id: number, storagePath?: str
   if (thumbnailPath) {
     await supabase.storage.from('assets').remove([thumbnailPath]);
   }
+};
+export interface BatchDownloadItem {
+  id: string;
+  fileName: string;
+  storagePath: string;
+}
+
+export const downloadBatchAsZip = async (items: BatchDownloadItem[]) => {
+  let response: Response;
+  try {
+    response = await fetch('/api/batch-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+      credentials: 'same-origin'
+    });
+  } catch (error: any) {
+    throw new Error('网络请求失败，请检查部署是否已生效并查看 Vercel Functions 日志');
+  }
+
+  if (!response.ok) {
+    let message = '批量下载失败';
+    try {
+      const data = await response.json();
+      message = data?.error || message;
+    } catch {
+      // no-op
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const nameMatch = disposition.match(/filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i);
+  const fileName = decodeURIComponent(nameMatch?.[1] || nameMatch?.[2] || `素材批量下载_${new Date().toISOString().slice(0, 10)}.zip`);
+
+  return { blob, fileName };
 };
