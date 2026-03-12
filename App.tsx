@@ -399,7 +399,7 @@ function App() {
               </button>
             </div>
           ) : (
-            <div className="columns-2 lg:columns-3 xl:columns-4 gap-6 pb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-6 pb-10">
               {filteredVideos.map(video => (
                 <VideoCard 
                   key={video.id} 

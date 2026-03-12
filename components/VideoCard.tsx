@@ -13,8 +13,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isSelected, isSelec
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHovering, setIsHovering] = useState(false);
 
-  const borderClass = isSelected 
-    ? 'ring-2 ring-indigo-600 ring-offset-2 shadow-md transform scale-[1.02]' 
+  const borderClass = isSelected
+    ? 'ring-2 ring-indigo-600 ring-offset-2 shadow-md transform scale-[1.02]'
     : 'border-gray-100 hover:shadow-lg';
 
   const checkboxDisplay = isSelectionMode || isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
@@ -50,11 +50,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isSelected, isSelec
   };
 
   return (
-    <div 
+    <div
       onClick={handleCardClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`break-inside-avoid mb-6 relative group cursor-pointer rounded-xl overflow-hidden bg-white shadow-sm border transition-all duration-300 ${borderClass}`}
+      className={`relative group cursor-pointer rounded-xl overflow-hidden bg-white shadow-sm border transition-all duration-300 h-full flex flex-col ${borderClass}`}
     >
       {/* Checkbox */}
       <div 
@@ -74,7 +74,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isSelected, isSelec
       )}
 
       {/* Thumbnail / Video */}
-      <div className={`w-full ${video.heightClass} ${video.color} flex items-center justify-center relative overflow-hidden bg-gray-100`}>
+      <div className={`w-full aspect-[3/4] ${video.color} flex items-center justify-center relative overflow-hidden bg-gray-100`}>
         
         {/* Render Real Video/Thumbnail or Fallback Icon */}
         {video.url ? (
@@ -115,9 +115,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isSelected, isSelec
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <h4 className="text-sm font-medium text-gray-800 truncate mb-2" title={video.title}>{video.title}</h4>
-        <div className="flex flex-wrap gap-1">
+      <div className="p-3 h-[88px] flex flex-col">
+        <h4 className="text-sm font-medium text-gray-800 line-clamp-2 leading-5 min-h-[40px] mb-2" title={video.title}>{video.title}</h4>
+        <div className="flex flex-wrap gap-1 min-h-[20px] overflow-hidden">
           {video.orientation === 'portrait' 
             ? <span className="text-[10px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">#竖屏</span>
             : <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">#横屏</span>
